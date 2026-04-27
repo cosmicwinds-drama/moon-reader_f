@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Folio Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --paper:#f6f1e7;
+  --paper2:#ede7d9;
+  --paper3:#e4dece;
+  --ink:#1c1814;
+  --ink2:#4c453c;
+  --ink3:#8c8278;
+  --ink4:#b8b0a4;
+  --rust:#8b3a1a;
+  --rust2:#c4612e;
+  --rust3:#e8956a;
+  --seam:#d0c8b8;
+  --seam2:#c0b8a8;
+  --green:#2d5a3d;
+  --shadow:rgba(28,24,20,0.18);
+  --shadow2:rgba(28,24,20,0.08);
+  --note:#faf6ee;
+  --noteline:#e8e0d0;
+  --dark:#141210;
+  --dark2:#1e1a16;
+  --dark3:#2a2520;
+  --dark4:#352f28;
+  --dark5:#403a32;
+}
+
+html,body{height:100%;width:100%;background:var(--paper2);
+  font-family:'Lora',Georgia,serif;color:var(--ink);
+  overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;}
+
+/* ── SCREENS ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;
+  transition:opacity .35s ease,transform .35s ease;}
+.screen.hidden{opacity:0;pointer-events:none;transform:translateY(6px);}
+
+/* ════════════════════════════════════
+   SETUP MODAL
+════════════════════════════════════ */
+#modal-setup{
+  position:fixed;inset:0;z-index:400;
+  background:rgba(20,18,16,.92);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);
+  transition:opacity .3s;
+}
+#modal-setup.hidden{opacity:0;pointer-events:none;}
+
+.setup-card{
+  background:var(--paper);border-radius:16px;
+  padding:36px 28px 28px;width:340px;max-width:92vw;
+  box-shadow:0 28px 72px rgba(0,0,0,.45);
+}
+.setup-logo{
+  font-family:'Crimson Pro',serif;font-size:32px;font-weight:600;
+  letter-spacing:-1px;color:var(--ink);margin-bottom:4px;
+}
+.setup-tagline{
+  font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--ink3);margin-bottom:28px;
+}
+.setup-field{margin-bottom:14px;}
+.setup-field label{
+  display:block;font-family:'DM Mono',monospace;
+  font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:5px;
+}
+.setup-field input{
+  width:100%;padding:11px 13px;
+  background:var(--paper2);border:1px solid var(--seam);
+  border-radius:8px;font-family:'Lora',serif;
+  font-size:14px;color:var(--ink);outline:none;
+  transition:border-color .2s;
+}
+.setup-field input:focus{border-color:var(--rust2);}
+.setup-hint{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--ink4);margin-top:5px;line-height:1.6;
+}
+.setup-btn{
+  width:100%;padding:14px;background:var(--rust);
+  border:none;border-radius:8px;margin-top:8px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  letter-spacing:1.5px;text-transform:uppercase;
+  color:#fff;cursor:pointer;transition:background .2s;
+}
+.setup-btn:hover{background:var(--rust2);}
+.setup-divider{
+  display:flex;align-items:center;gap:10px;margin:16px 0;
+}
+.setup-divider hr{flex:1;border:none;border-top:1px solid var(--seam);}
+.setup-divider span{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--ink4);letter-spacing:1px;
+}
+
+/* ════════════════════════════════════
+   LIBRARY
+════════════════════════════════════ */
+#screen-library{background:var(--paper);overflow-y:auto;}
+
+.lib-header{
+  padding:52px 24px 16px;
+  background:var(--paper);
+  position:sticky;top:0;z-index:10;
+  border-bottom:1px solid var(--seam);
+}
+.lib-header-row{display:flex;align-items:baseline;justify-content:space-between;}
+.lib-title{
+  font-family:'Crimson Pro',serif;font-size:30px;
+  font-weight:600;letter-spacing:-.5px;
+}
+.lib-subtitle{
+  font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;color:var(--ink3);
+  margin-top:2px;
+}
+.lib-user-badge{
+  font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:1px;color:var(--ink4);
+  background:var(--paper2);border:1px solid var(--seam);
+  border-radius:20px;padding:4px 10px;
+}
+
+.search-wrap{
+  margin:12px 24px 0;
+  display:flex;align-items:center;gap:8px;
+  background:var(--paper2);border:1px solid var(--seam);
+  border-radius:8px;padding:9px 13px;
+}
+.search-wrap svg{flex-shrink:0;color:var(--ink4);}
+.search-wrap input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-family:'Lora',serif;font-size:13px;color:var(--ink);
+}
+.search-wrap input::placeholder{color:var(--ink4);}
+
+.section-head{
+  padding:22px 24px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.section-label{
+  font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;color:var(--ink3);
+}
+.section-action{
+  font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:1px;color:var(--rust2);cursor:pointer;
+  background:none;border:none;
+}
+
+.book-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+  gap:18px;padding:0 24px 24px;
+}
+.book-item{
+  display:flex;flex-direction:column;gap:7px;cursor:pointer;
+  animation:fadein .3s ease both;
+}
+.book-item:active .book-cover{transform:scale(.95);}
+.book-cover{
+  width:100%;aspect-ratio:2/3;
+  border-radius:2px 7px 7px 2px;
+  position:relative;overflow:hidden;
+  box-shadow:-2px 2px 0 rgba(0,0,0,.07),2px 5px 14px var(--shadow);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.book-cover:hover{transform:translateY(-2px);box-shadow:-2px 4px 0 rgba(0,0,0,.07),2px 10px 24px var(--shadow);}
+.book-spine{position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(0,0,0,.2);}
+.book-inner{
+  width:100%;height:100%;
+  display:flex;flex-direction:column;
+  justify-content:space-between;padding:10px 8px 8px 13px;
+}
+.book-cover-title{
+  font-family:'Crimson Pro',serif;font-size:10px;font-weight:600;
+  color:rgba(255,255,255,.92);line-height:1.3;
+  text-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.book-cover-author{
+  font-family:'DM Mono',monospace;font-size:7px;
+  color:rgba(255,255,255,.6);letter-spacing:.5px;
+}
+.book-prog{
+  position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:rgba(255,255,255,.15);
+}
+.book-prog-fill{height:100%;background:rgba(255,255,255,.7);}
+.book-name{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--ink3);letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.book-default-badge{
+  font-family:'DM Mono',monospace;font-size:7px;
+  color:var(--rust3);letter-spacing:.5px;
+}
+
+.add-btn{
+  width:100%;aspect-ratio:2/3;
+  border:1.5px dashed var(--seam2);border-radius:7px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;
+  cursor:pointer;background:transparent;
+  color:var(--ink4);font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:1px;
+  transition:all .2s;
+}
+.add-btn:hover{border-color:var(--rust2);color:var(--rust2);}
+.add-btn-icon{font-size:20px;line-height:1;}
+#file-input{display:none;}
+
+.stats-row{
+  display:flex;gap:0;margin:0 24px 28px;
+  border:1px solid var(--seam);border-radius:10px;
+  overflow:hidden;background:var(--paper2);
+}
+.stat{
+  flex:1;padding:14px 0;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  border-right:1px solid var(--seam);
+}
+.stat:last-child{border-right:none;}
+.stat-n{
+  font-family:'DM Mono',monospace;font-size:20px;
+  font-weight:400;color:var(--rust);
+}
+.stat-l{
+  font-family:'DM Mono',monospace;font-size:8px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--ink4);
+}
+
+/* ════════════════════════════════════
+   READER
+════════════════════════════════════ */
+#screen-reader{background:var(--dark);flex-direction:column;}
+
+.reader-bar{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;
+  background:var(--dark2);border-bottom:1px solid var(--dark4);
+  flex-shrink:0;z-index:20;
+}
+.r-btn{
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:6px;cursor:pointer;color:#7a7068;
+  font-size:17px;transition:all .15s;border:none;background:none;
+}
+.r-btn:hover{color:#b0a898;background:rgba(255,255,255,.05);}
+.r-btn.on{color:var(--rust3);}
+.reader-title{
+  flex:1;font-family:'Lora',serif;font-size:13px;
+  font-weight:600;color:#d0c8b8;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.reader-pg{
+  font-family:'DM Mono',monospace;font-size:10px;
+  color:#5a5248;letter-spacing:.5px;flex-shrink:0;
+}
+
+/* SECRET ZONE — top-right, 80×80, totally invisible */
+#secret-zone{
+  position:absolute;top:0;right:0;
+  width:80px;height:80px;z-index:100;
+}
+#secret-zone.pressing{
+  background:radial-gradient(circle at 80% 20%,rgba(139,58,26,.07),transparent 70%);
+}
+
+.pdf-scroll{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px 0;gap:10px;
+  scroll-behavior:smooth;
+}
+.pdf-scroll::-webkit-scrollbar{width:3px;}
+.pdf-scroll::-webkit-scrollbar-thumb{background:var(--dark5);border-radius:2px;}
+
+.pdf-pg-wrap{
+  box-shadow:0 4px 28px rgba(0,0,0,.6);
+  border-radius:1px;overflow:hidden;
+  position:relative;
+}
+.pdf-pg-wrap canvas{display:block;}
+.pg-num-badge{
+  position:absolute;bottom:6px;right:8px;
+  font-family:'DM Mono',monospace;font-size:8px;
+  color:rgba(255,255,255,.3);letter-spacing:.5px;
+  pointer-events:none;
+}
+
+.reader-foot{
+  padding:10px 16px;
+  background:var(--dark2);border-top:1px solid var(--dark4);
+  display:flex;align-items:center;gap:12px;flex-shrink:0;
+}
+.r-progress{
+  flex:1;height:2px;background:var(--dark5);
+  border-radius:1px;overflow:hidden;cursor:pointer;
+}
+.r-progress-fill{
+  height:100%;background:var(--rust2);
+  transition:width .4s ease;
+}
+.r-foot-btn{
+  font-family:'DM Mono',monospace;font-size:10px;
+  color:#5a5248;cursor:pointer;padding:4px 6px;
+  border-radius:4px;transition:color .15s;border:none;background:none;
+}
+.r-foot-btn:hover{color:#9a9088;}
+
+/* dim overlay */
+#dim-overlay{
+  position:absolute;inset:0;pointer-events:none;
+  background:rgba(0,0,0,0);transition:background .3s;z-index:5;
+}
+
+/* loading */
+.page-placeholder{
+  width:min(92vw,640px);height:56vw;max-height:380px;
+  background:var(--dark3);display:flex;align-items:center;justify-content:center;
+  border-radius:1px;
+}
+.spin{
+  width:22px;height:22px;border:2px solid var(--dark5);
+  border-top-color:var(--rust2);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+
+/* ════════════════════════════════════
+   PIN MODAL — "Go to Page"
+════════════════════════════════════ */
+#modal-pin{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(14,12,10,.88);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(5px);
+  transition:opacity .25s;
+}
+#modal-pin.hidden{opacity:0;pointer-events:none;}
+
+.pin-card{
+  background:var(--paper);border-radius:14px;
+  padding:26px 22px 22px;width:270px;
+  box-shadow:0 22px 56px rgba(0,0,0,.5);
+}
+.pin-head{
+  font-family:'DM Mono',monospace;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;
+  color:var(--ink3);text-align:center;margin-bottom:18px;
+}
+.pin-dots{
+  display:flex;justify-content:center;gap:14px;margin-bottom:22px;
+}
+.pin-dot{
+  width:12px;height:12px;border-radius:50%;
+  border:1.5px solid var(--seam2);background:transparent;
+  transition:all .15s;
+}
+.pin-dot.on{background:var(--rust);border-color:var(--rust);}
+.pin-keys{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+}
+.pin-key{
+  height:50px;border:none;background:var(--paper2);
+  border-radius:8px;cursor:pointer;
+  font-family:'DM Mono',monospace;color:var(--ink);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;
+  transition:all .1s;
+}
+.pin-key:active{background:var(--seam);transform:scale(.95);}
+.pin-key .k-num{font-size:18px;line-height:1;}
+.pin-key .k-sub{font-size:7px;letter-spacing:1px;color:var(--ink4);}
+.pin-key.act{font-size:11px;letter-spacing:.5px;}
+.pin-key.del{font-size:15px;}
+.pin-err{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:#b03020;text-align:center;
+  margin-top:12px;height:12px;opacity:0;transition:opacity .2s;
+}
+.pin-err.show{opacity:1;}
+
+/* ════════════════════════════════════
+   CHAT — "Annotations & Notes"
+════════════════════════════════════ */
+#screen-chat{
+  background:var(--note);z-index:250;
+  transform:translateY(100%);
+  transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .3s;
+}
+#screen-chat:not(.hidden){transform:translateY(0);opacity:1;}
+#screen-chat.hidden{transform:translateY(100%);opacity:0;pointer-events:none;}
+
+.chat-top{
+  padding:14px 18px 10px;
+  border-bottom:1px solid var(--noteline);
+  background:var(--note);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.chat-top-info{}
+.chat-top-title{
+  font-family:'Lora',serif;font-size:16px;font-weight:600;color:var(--ink);
+}
+.chat-top-sub{
+  font-family:'DM Mono',monospace;font-size:8px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);
+  margin-top:2px;
+}
+.chat-close-btn{
+  width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink3);cursor:pointer;font-size:17px;
+  border-radius:6px;transition:all .15s;border:none;background:none;
+}
+.chat-close-btn:hover{background:var(--noteline);}
+
+.online-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 18px;
+  background:rgba(0,0,0,.02);
+  border-bottom:1px solid var(--noteline);
+  flex-shrink:0;
+}
+.online-dot{
+  width:5px;height:5px;border-radius:50%;background:#4a8a5a;
+  animation:blink 2.2s ease-in-out infinite;
+}
+.online-txt{
+  font-family:'DM Mono',monospace;font-size:8px;
+  letter-spacing:.5px;color:var(--ink4);
+}
+
+/* notebook lines */
+.chat-body{
+  flex:1;overflow-y:auto;position:relative;
+  display:flex;flex-direction:column;
+}
+#chat-messages{
+  flex:1;
+  padding:16px 18px 8px;
+  display:flex;flex-direction:column;gap:0;
+  background-image:repeating-linear-gradient(
+    transparent,transparent 27px,var(--noteline) 27px,var(--noteline) 28px
+  );
+  background-size:100% 28px;
+  min-height:100%;
+}
+#chat-messages::-webkit-scrollbar{width:3px;}
+
+/* red margin rule */
+.chat-body::before{
+  content:'';position:absolute;
+  left:52px;top:0;bottom:0;width:1px;
+  background:rgba(180,80,60,.2);pointer-events:none;z-index:1;
+}
+
+/* messages */
+.msg{
+  display:flex;gap:8px;align-items:flex-start;
+  min-height:28px;line-height:28px;
+  font-family:'Crimson Pro',serif;font-size:16.5px;color:var(--ink);
+  position:relative;z-index:2;
+}
+.msg-who{
+  font-family:'DM Mono',monospace;font-size:8px;
+  color:var(--rust2);min-width:36px;margin-top:6px;
+  letter-spacing:.3px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:36px;
+}
+.msg.mine .msg-who{color:var(--ink4);}
+.msg.mine .msg-text{font-style:italic;}
+.msg-text{flex:1;line-height:28px;}
+
+/* system messages */
+.msg.sys{
+  justify-content:center;
+  font-family:'DM Mono',monospace;font-size:8px;
+  color:var(--ink4);letter-spacing:.5px;
+}
+.msg.sys .msg-text{
+  font-family:'DM Mono',monospace;font-size:8px;
+  font-style:normal;text-align:center;
+  border:none;background:none;
+}
+
+/* ── MEDIA MESSAGES — disguised as academic refs ── */
+
+/* Photo/Video → [Fig. N.N] */
+.msg-fig{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--rust);cursor:pointer;
+  border-bottom:1px dashed var(--rust3);
+  line-height:28px;
+}
+.msg-fig:hover{color:var(--rust2);}
+.msg-fig .fig-label{font-style:italic;}
+
+/* Audio → superscript footnote */
+.msg-fn{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--rust);cursor:pointer;
+  vertical-align:super;line-height:1;
+  border-bottom:1px solid var(--rust3);
+  margin-left:2px;
+}
+.msg-fn:hover{color:var(--rust2);}
+
+/* Document → [Appendix X] */
+.msg-app{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--green);cursor:pointer;
+  border-bottom:1px dashed rgba(45,90,61,.4);
+  line-height:28px;
+}
+.msg-app:hover{color:#3d7a55;}
+
+/* Audio player (hidden, attached to footnote) */
+.audio-player{
+  display:none;
+  align-items:center;gap:8px;
+  padding:6px 10px;
+  background:var(--paper2);border:1px solid var(--seam);
+  border-radius:6px;margin:2px 0 2px 44px;
+  font-family:'DM Mono',monospace;font-size:9px;color:var(--ink2);
+}
+.audio-player.show{display:flex;}
+.audio-play-btn{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--rust);border:none;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:10px;flex-shrink:0;
+  transition:background .15s;
+}
+.audio-play-btn:hover{background:var(--rust2);}
+audio{display:none;}
+
+/* Footnote legend at bottom of chat */
+.footnote-legend{
+  padding:8px 18px 6px 54px;
+  border-top:1px solid var(--noteline);
+  flex-shrink:0;
+}
+.fn-entry{
+  font-family:'DM Mono',monospace;font-size:8px;
+  color:var(--ink4);line-height:1.8;letter-spacing:.3px;
+}
+
+/* media lightbox */
+#media-lb{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.92);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;
+}
+#media-lb.hidden{display:none;}
+#media-lb img,#media-lb video{
+  max-width:95vw;max-height:80vh;
+  object-fit:contain;border-radius:4px;
+}
+.lb-close{
+  font-family:'DM Mono',monospace;font-size:10px;
+  letter-spacing:1px;color:rgba(255,255,255,.5);
+  cursor:pointer;border:none;background:none;
+}
+.lb-caption{
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:rgba(255,255,255,.3);letter-spacing:.5px;
+}
+
+/* chat input */
+.chat-input-row{
+  padding:10px 16px;
+  border-top:1px solid var(--noteline);
+  background:var(--note);
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.chat-input-row input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-family:'Crimson Pro',serif;font-size:16px;color:var(--ink);
+  border-bottom:1px solid var(--seam);padding:3px 0;
+}
+.chat-input-row input::placeholder{color:var(--ink4);font-style:italic;}
+
+/* media toolbar */
+.media-row{
+  display:flex;gap:2px;padding:6px 16px;
+  border-top:1px solid var(--noteline);
+  background:var(--note);flex-shrink:0;
+}
+.m-btn{
+  width:36px;height:30px;border:none;background:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border-radius:6px;color:var(--ink3);
+  font-size:15px;transition:all .15s;
+}
+.m-btn:hover{background:var(--noteline);color:var(--ink2);}
+.m-btn.rec-active{color:#c03030;animation:blink 1s ease-in-out infinite;}
+.chat-send{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--rust);border:none;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:13px;
+  transition:all .15s;flex-shrink:0;
+}
+.chat-send:hover{background:var(--rust2);}
+
+/* hidden inputs */
+.hidden-input{display:none;}
+
+/* ════════════════════════════════════
+   TOAST
+════════════════════════════════════ */
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:var(--dark);color:var(--paper);
+  font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5px;
+  padding:9px 16px;border-radius:20px;z-index:600;
+  white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%,60%{transform:translateX(-7px)}
+  40%,80%{transform:translateX(7px)}
+}
+.shake{animation:shake .38s ease;}
+
+/* recording pulse ring */
+@keyframes ring{
+  0%{box-shadow:0 0 0 0 rgba(192,48,48,.4)}
+  70%{box-shadow:0 0 0 8px rgba(192,48,48,0)}
+  100%{box-shadow:0 0 0 0 rgba(192,48,48,0)}
+}
+.ring{animation:ring 1.2s ease-in-out infinite;}
+</style>
+</head>
+<body>
+
+<!-- ════════════════ SETUP MODAL ════════════════ -->
+<div id="modal-setup">
+  <div class="setup-card">
+    <div class="setup-logo">Folio</div>
+    <div class="setup-tagline">personal reading companion</div>
+
+    <div class="setup-field">
+      <label>Your Name</label>
+      <input id="s-name" type="text" placeholder="e.g. Arjun" maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="setup-field">
+      <label>Session PIN <span style="color:var(--ink4)">(4 digits — share with friends)</span></label>
+      <input id="s-pin" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="4-digit PIN" maxlength="4" autocomplete="off"/>
+      <div class="setup-hint">Everyone in your group uses the same PIN.</div>
+    </div>
+    <div class="setup-field">
+      <label>Room Code <span style="color:var(--ink4)">(any word)</span></label>
+      <input id="s-room" type="text" placeholder="e.g. monsoon24" maxlength="24" autocomplete="off"/>
+    </div>
+    <button class="setup-btn" onclick="doSetup()">Open Library</button>
+
+    <div class="setup-divider"><hr><span>Cloudinary (media uploads)</span><hr></div>
+    <div class="setup-field">
+      <label>Cloudinary Cloud Name</label>
+      <input id="s-cloud" type="text" placeholder="your-cloud-name" autocomplete="off"/>
+      <div class="setup-hint">Free at cloudinary.com — needed for photos, audio, video.</div>
+    </div>
+    <div class="setup-field">
+      <label>Cloudinary Upload Preset</label>
+      <input id="s-preset" type="text" placeholder="unsigned_preset" autocomplete="off"/>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ LIBRARY ════════════════ -->
+<div class="screen hidden" id="screen-library">
+  <div class="lib-header">
+    <div class="lib-header-row">
+      <div>
+        <div class="lib-title">Folio</div>
+        <div class="lib-subtitle">reading companion</div>
+      </div>
+      <div class="lib-user-badge" id="user-badge">—</div>
+    </div>
+    <div class="search-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search-input" placeholder="Search library…" oninput="filterBooks()"/>
+    </div>
+  </div>
+
+  <!-- Default / classic books -->
+  <div class="section-head">
+    <div class="section-label">Classic Texts</div>
+    <button class="section-action" onclick="document.getElementById('file-input').click()">+ Add Book</button>
+  </div>
+  <div class="book-grid" id="default-grid"></div>
+
+  <!-- User books -->
+  <div class="section-head" id="user-section-head" style="display:none">
+    <div class="section-label">Your Library</div>
+  </div>
+  <div class="book-grid" id="user-grid">
+    <div class="book-item" style="animation-delay:.1s">
+      <button class="add-btn" onclick="document.getElementById('file-input').click()">
+        <div class="add-btn-icon">+</div>
+        import pdf
+      </button>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept=".pdf" multiple onchange="handleFiles(event)"/>
+
+  <div class="section-head">
+    <div class="section-label">Reading Activity</div>
+  </div>
+  <div class="stats-row" style="margin-bottom:32px">
+    <div class="stat"><div class="stat-n" id="st-books">0</div><div class="stat-l">Books</div></div>
+    <div class="stat"><div class="stat-n" id="st-sess">0</div><div class="stat-l">Sessions</div></div>
+    <div class="stat"><div class="stat-n" id="st-pages">0</div><div class="stat-l">Pages</div></div>
+  </div>
+</div>
+
+<!-- ════════════════ READER ════════════════ -->
+<div class="screen hidden" id="screen-reader">
+  <div id="dim-overlay"></div>
+  <div id="secret-zone"
+    ontouchstart="pressStart(event)" ontouchend="pressEnd()"
+    onmousedown="pressStart(event)" onmouseup="pressEnd()" onmouseleave="pressEnd()">
+  </div>
+
+  <div class="reader-bar">
+    <button class="r-btn" onclick="closeReader()">&#8592;</button>
+    <div class="reader-title" id="reader-title">—</div>
+    <div class="reader-pg" id="reader-pg">—</div>
+    <button class="r-btn" id="dim-btn" onclick="cycleDim()">&#9788;</button>
+    <button class="r-btn" onclick="jumpPages(-1)">&#8249;</button>
+    <button class="r-btn" onclick="jumpPages(1)">&#8250;</button>
+  </div>
+
+  <div class="pdf-scroll" id="pdf-scroll" onscroll="onScroll()"></div>
+
+  <div class="reader-foot">
+    <div class="r-progress" id="r-progress" onclick="seekProgress(event)">
+      <div class="r-progress-fill" id="r-prog-fill" style="width:0%"></div>
+    </div>
+    <button class="r-foot-btn" onclick="jumpPages(-10)">&#171; 10</button>
+    <button class="r-foot-btn" onclick="jumpPages(10)">10 &#187;</button>
+  </div>
+</div>
+
+<!-- ════════════════ PIN MODAL ════════════════ -->
+<div id="modal-pin" class="hidden">
+  <div class="pin-card">
+    <div class="pin-head">Go to Page</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-keys">
+      <button class="pin-key" onclick="pk('1')"><div class="k-num">1</div><div class="k-sub">&nbsp;</div></button>
+      <button class="pin-key" onclick="pk('2')"><div class="k-num">2</div><div class="k-sub">abc</div></button>
+      <button class="pin-key" onclick="pk('3')"><div class="k-num">3</div><div class="k-sub">def</div></button>
+      <button class="pin-key" onclick="pk('4')"><div class="k-num">4</div><div class="k-sub">ghi</div></button>
+      <button class="pin-key" onclick="pk('5')"><div class="k-num">5</div><div class="k-sub">jkl</div></button>
+      <button class="pin-key" onclick="pk('6')"><div class="k-num">6</div><div class="k-sub">mno</div></button>
+      <button class="pin-key" onclick="pk('7')"><div class="k-num">7</div><div class="k-sub">pqrs</div></button>
+      <button class="pin-key" onclick="pk('8')"><div class="k-num">8</div><div class="k-sub">tuv</div></button>
+      <button class="pin-key" onclick="pk('9')"><div class="k-num">9</div><div class="k-sub">wxyz</div></button>
+      <button class="pin-key act" onclick="pkCancel()">cancel</button>
+      <button class="pin-key" onclick="pk('0')"><div class="k-num">0</div></button>
+      <button class="pin-key del" onclick="pkDel()">⌫</button>
+    </div>
+    <div class="pin-err" id="pin-err">incorrect</div>
+  </div>
+</div>
+
+<!-- ════════════════ CHAT SCREEN ════════════════ -->
+<div class="screen hidden" id="screen-chat">
+  <div class="chat-top">
+    <div class="chat-top-info">
+      <div class="chat-top-title" id="chat-title">Annotations</div>
+      <div class="chat-top-sub" id="chat-sub">marginal notes · ——</div>
+    </div>
+    <button class="chat-close-btn" onclick="closeChat()">&#10005;</button>
+  </div>
+  <div class="online-bar">
+    <div class="online-dot"></div>
+    <div class="online-txt" id="online-txt">connecting…</div>
+  </div>
+
+  <!-- footnote legend -->
+  <div class="footnote-legend" id="fn-legend" style="display:none"></div>
+
+  <div class="chat-body">
+    <div id="chat-messages"></div>
+  </div>
+
+  <!-- media toolbar -->
+  <div class="media-row">
+    <button class="m-btn" onclick="triggerMedia('image/*')" title="Photo">📷</button>
+    <button class="m-btn" onclick="openCamera()" title="Camera">📸</button>
+    <button class="m-btn" onclick="triggerMedia('video/*')" title="Video">🎞</button>
+    <button class="m-btn" id="audio-rec-btn" onclick="toggleAudioRec()" title="Voice note">🎙</button>
+    <button class="m-btn" onclick="triggerMedia('*/*')" title="Document">📎</button>
+    <div style="flex:1"></div>
+  </div>
+  <div class="chat-input-row">
+    <input id="chat-in" type="text" placeholder="Add a note…"
+           onkeydown="if(event.key==='Enter')sendText()" autocomplete="off"/>
+    <button class="chat-send" onclick="sendText()">&#10148;</button>
+  </div>
+
+  <!-- hidden file inputs -->
+  <input class="hidden-input" id="media-input" type="file" onchange="handleMedia(event)"/>
+  <input class="hidden-input" id="cam-input" type="file" accept="image/*" capture="environment" onchange="handleMedia(event)"/>
+
+  <!-- canvas for video thumb -->
+  <canvas id="vid-canvas" style="display:none"></canvas>
+</div>
+
+<!-- ════════════════ MEDIA LIGHTBOX ════════════════ -->
+<div id="media-lb" class="hidden">
+  <div id="lb-content"></div>
+  <div class="lb-caption" id="lb-cap"></div>
+  <button class="lb-close" onclick="closeLB()">close ✕</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+//  CONFIG — change WS_URL after deploy
+// ══════════════════════════════════════
+const WS_URL = 'https://moon-reader.onrender.com'; // 
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── State ──────────────────────────────
+const S = {
+  name:'', pin:'', room:'', cloudName:'', uploadPreset:'',
+  books:[], currentBook:null,
+  pdfDoc:null, totalPages:0, currentPage:1,
+  chatOpen:false, chatUnlocked:false,
+  ws:null, wsOk:false,
+  dimLevel:0,
+  sessions:0, pagesRead:0,
+  pressTimer:null,
+  mediaRec:null, mediaChunks:[],
+  figCount:0, fnCount:0, appCount:0,
+  fnMap:{}, // fnIndex → audioUrl
+};
+
+// ── Default Books (public domain) ─────
+const DEFAULT_BOOKS = [
+  { title:'Pride and Prejudice', author:'Jane Austen',
+    url:'https://www.gutenberg.org/files/1342/1342-pdf.pdf',
+    color:['#4a2c6e','#6b3fa0'] },
+  { title:'The Adventures of Sherlock Holmes', author:'A. Conan Doyle',
+    url:'https://www.gutenberg.org/files/1661/1661-pdf.pdf',
+    color:['#1a3a2a','#2d6b4a'] },
+  { title:'Critique of Pure Reason', author:'Immanuel Kant',
+    url:'https://www.gutenberg.org/files/4280/4280-pdf.pdf',
+    color:['#2a2040','#3d3060'] },
+  { title:'The Republic', author:'Plato',
+    url:'https://www.gutenberg.org/files/1497/1497-pdf.pdf',
+    color:['#3a1a0a','#6b3010'] },
+  { title:'On the Origin of Species', author:'Charles Darwin',
+    url:'https://www.gutenberg.org/files/1228/1228-pdf.pdf',
+    color:['#0a2a1a','#1a5030'] },
+  { title:'Crime and Punishment', author:'F. Dostoevsky',
+    url:'https://www.gutenberg.org/files/2554/2554-pdf.pdf',
+    color:['#2a0a0a','#601818'] },
+];
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+window.onload = () => {
+  loadLocal();
+  renderDefaultBooks();
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden) lockChat();
+  });
+};
+
+function loadLocal(){
+  S.sessions  = +localStorage.getItem('f_sess')||0;
+  S.pagesRead = +localStorage.getItem('f_pages')||0;
+  const saved = localStorage.getItem('f_books');
+  if(saved){
+    S.books = JSON.parse(saved);
+    S.books.forEach(b=>b.data=null); // buffers can't be stored
+  }
+}
+
+// ══════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════
+function doSetup(){
+  const name  = v('s-name').trim();
+  const pin   = v('s-pin').trim();
+  const room  = v('s-room').trim();
+  const cloud = v('s-cloud').trim();
+  const preset= v('s-preset').trim();
+
+  if(!name){ toast('Enter your name'); return; }
+  if(pin.length!==4||!/^\d+$/.test(pin)){ toast('PIN must be 4 digits'); return; }
+  if(!room){ toast('Enter a room code'); return; }
+
+  S.name=name; S.pin=pin; S.room=room;
+  S.cloudName=cloud; S.uploadPreset=preset;
+
+  hide('modal-setup');
+  show('screen-library');
+  ge('user-badge').textContent=name;
+  renderUserBooks();
+  updateStats();
+  connectWS();
+}
+
+// ══════════════════════════════════════
+//  LIBRARY
+// ══════════════════════════════════════
+function renderDefaultBooks(){
+  const g = ge('default-grid');
+  g.innerHTML='';
+  DEFAULT_BOOKS.forEach((b,i)=>{
+    const el=document.createElement('div');
+    el.className='book-item';
+    el.style.animationDelay=i*.06+'s';
+    el.innerHTML=`
+      <div class="book-cover" onclick="openDefaultBook(${i})">
+        <div class="book-spine"></div>
+        <div class="book-inner" style="background:linear-gradient(140deg,${b.color[0]},${b.color[1]})">
+          <div class="book-cover-title">${b.title}</div>
+          <div class="book-cover-author">${b.author}</div>
+        </div>
+      </div>
+      <div class="book-name">${b.title.substring(0,16)}</div>
+      <div class="book-default-badge">classic</div>
+    `;
+    g.appendChild(el);
+  });
+}
+
+function renderUserBooks(){
+  const g=ge('user-grid');
+  g.innerHTML='';
+  S.books.forEach((b,i)=>{
+    const COLS=[['#2d4a5c','#3d6b80'],['#3a2040','#5a3060'],
+                ['#1a3a28','#2d6040'],['#4a2a14','#7a4a28'],
+                ['#1a2a4a','#2d4070'],['#3a1a28','#602840']];
+    const [c1,c2]=COLS[i%COLS.length];
+    const el=document.createElement('div');
+    el.className='book-item';
+    el.style.animationDelay=i*.06+'s';
+    el.innerHTML=`
+      <div class="book-cover" onclick="openUserBook(${i})">
+        <div class="book-spine"></div>
+        <div class="book-inner" style="background:linear-gradient(140deg,${c1},${c2})">
+          <div class="book-cover-title">${b.name.replace('.pdf','')}</div>
+        </div>
+        ${b.progress>0?`<div class="book-prog"><div class="book-prog-fill" style="width:${b.progress}%"></div></div>`:''}
+      </div>
+      <div class="book-name">${b.name.replace('.pdf','').substring(0,14)}</div>
+    `;
+    g.appendChild(el);
+  });
+  // add button
+  const addEl=document.createElement('div');
+  addEl.className='book-item';
+  addEl.innerHTML=`<button class="add-btn" onclick="ge('file-input').click()">
+    <div class="add-btn-icon">+</div>import pdf</button>`;
+  g.appendChild(addEl);
+
+  ge('user-section-head').style.display=S.books.length?'':'none';
+  updateStats();
+}
+
+function handleFiles(e){
+  Array.from(e.target.files).forEach(f=>{
+    if(!f.name.endsWith('.pdf')){ toast('PDFs only'); return; }
+    if(S.books.find(b=>b.name===f.name)){ toast('Already added'); return; }
+    const r=new FileReader();
+    r.onload=ev=>{
+      S.books.push({name:f.name,data:ev.target.result,progress:0});
+      saveBooks();
+      renderUserBooks();
+      toast(`Added: ${f.name.replace('.pdf','')}`);
+    };
+    r.readAsArrayBuffer(f);
+  });
+  e.target.value='';
+}
+
+function filterBooks(){
+  const q=ge('search-input').value.toLowerCase();
+  [...ge('default-grid').children,...ge('user-grid').children].forEach(el=>{
+    const t=el.querySelector('.book-cover-title,.book-name');
+    el.style.display=(!q||t?.textContent.toLowerCase().includes(q))?'':'none';
+  });
+}
+
+function saveBooks(){
+  const meta=S.books.map(b=>({name:b.name,progress:b.progress||0}));
+  localStorage.setItem('f_books',JSON.stringify(meta));
+}
+
+function updateStats(){
+  ge('st-books').textContent=S.books.length+DEFAULT_BOOKS.length;
+  ge('st-sess').textContent=S.sessions;
+  ge('st-pages').textContent=S.pagesRead;
+}
+
+// ══════════════════════════════════════
+//  READER
+// ══════════════════════════════════════
+async function openDefaultBook(i){
+  const b=DEFAULT_BOOKS[i];
+  toast('Loading…');
+  try{
+    const resp=await fetch(b.url);
+    const buf=await resp.arrayBuffer();
+    await startReader({name:b.title,data:buf,progress:0,isDefault:true});
+  }catch{
+    toast('Could not load — check connection');
+  }
+}
+
+async function openUserBook(i){
+  const b=S.books[i];
+  if(!b.data){ toast('Re-import to read'); return; }
+  S.currentBook=b;
+  await startReader(b);
+}
+
+async function startReader(book){
+  S.currentBook=book;
+  S.chatUnlocked=false;
+  S.sessions++;
+  localStorage.setItem('f_sess',S.sessions);
+  updateStats();
+
+  ge('reader-title').textContent=book.name.replace('.pdf','');
+  ge('pdf-scroll').innerHTML='';
+  show('screen-reader');
+
+  try{
+    S.pdfDoc=await pdfjsLib.getDocument({data:book.data}).promise;
+    S.totalPages=S.pdfDoc.numPages;
+    ge('reader-pg').textContent=`1 / ${S.totalPages}`;
+
+    // render first 4 immediately
+    for(let p=1;p<=Math.min(4,S.totalPages);p++) await renderPage(p);
+    // rest in background
+    for(let p=5;p<=S.totalPages;p++) renderPage(p);
+  }catch(e){
+    toast('PDF error'); console.error(e);
+  }
+}
+
+async function renderPage(n){
+  const scroll=ge('pdf-scroll');
+  const pg=await S.pdfDoc.getPage(n);
+  const cw=Math.min(window.innerWidth*.94,680);
+  const vp=pg.getViewport({scale:1});
+  const scale=cw/vp.width;
+  const sv=pg.getViewport({scale});
+
+  const wrap=document.createElement('div');
+  wrap.className='pdf-pg-wrap';
+  wrap.dataset.p=n;
+  wrap.style.width=sv.width+'px';
+
+  const canvas=document.createElement('canvas');
+  canvas.width=sv.width; canvas.height=sv.height;
+
+  const badge=document.createElement('div');
+  badge.className='pg-num-badge';
+  badge.textContent=n;
+
+  wrap.appendChild(canvas);
+  wrap.appendChild(badge);
+  scroll.appendChild(wrap);
+
+  await pg.render({canvasContext:canvas.getContext('2d'),viewport:sv}).promise;
+}
+
+function onScroll(){
+  const scroll=ge('pdf-scroll');
+  const pages=scroll.querySelectorAll('.pdf-pg-wrap');
+  if(!pages.length) return;
+  const mid=scroll.getBoundingClientRect().top+scroll.clientHeight/2;
+  let cur=1;
+  pages.forEach(p=>{
+    if(p.getBoundingClientRect().top<mid) cur=+p.dataset.p;
+  });
+  S.currentPage=cur;
+  const pct=(cur/S.totalPages)*100;
+  ge('r-prog-fill').style.width=pct+'%';
+  ge('reader-pg').textContent=`${cur} / ${S.totalPages}`;
+  if(S.currentBook&&!S.currentBook.isDefault){
+    S.currentBook.progress=Math.round(pct);
+    saveBooks();
+  }
+  S.pagesRead=Math.max(S.pagesRead,cur);
+  localStorage.setItem('f_pages',S.pagesRead);
+  updateStats();
+}
+
+function jumpPages(d){
+  const t=Math.max(1,Math.min(S.totalPages,S.currentPage+d));
+  const el=ge('pdf-scroll').querySelector(`[data-p="${t}"]`);
+  if(el) el.scrollIntoView({behavior:'smooth'});
+}
+
+function seekProgress(e){
+  const pct=e.offsetX/ge('r-progress').clientWidth;
+  const t=Math.max(1,Math.min(S.totalPages,Math.round(pct*S.totalPages)));
+  jumpPages(t-S.currentPage);
+}
+
+const DIM=['rgba(0,0,0,0)','rgba(0,0,0,.22)','rgba(10,8,6,.48)'];
+function cycleDim(){
+  S.dimLevel=(S.dimLevel+1)%3;
+  ge('dim-overlay').style.background=DIM[S.dimLevel];
+  ge('dim-btn').classList.toggle('on',S.dimLevel>0);
+}
+
+function closeReader(){
+  lockChat();
+  show('screen-library');
+  ge('pdf-scroll').innerHTML='';
+  S.pdfDoc=null; S.currentBook=null;
+}
+
+// ══════════════════════════════════════
+//  SECRET TRIGGER — long-press top-right
+// ══════════════════════════════════════
+function pressStart(e){
+  e.preventDefault();
+  ge('secret-zone').classList.add('pressing');
+  S.pressTimer=setTimeout(()=>{
+    ge('secret-zone').classList.remove('pressing');
+    if(S.chatUnlocked) openChat();
+    else showPin();
+  },1500);
+}
+function pressEnd(){
+  clearTimeout(S.pressTimer);
+  ge('secret-zone').classList.remove('pressing');
+}
+
+// ══════════════════════════════════════
+//  PIN
+// ══════════════════════════════════════
+let pinBuf='';
+function showPin(){
+  pinBuf='';
+  updateDots();
+  ge('pin-err').classList.remove('show');
+  show('modal-pin');
+}
+function pk(d){
+  if(pinBuf.length>=4) return;
+  pinBuf+=d; updateDots();
+  if(pinBuf.length===4) setTimeout(checkPin,120);
+}
+function pkDel(){ pinBuf=pinBuf.slice(0,-1); updateDots(); }
+function pkCancel(){ pinBuf=''; hide('modal-pin'); }
+function updateDots(){
+  for(let i=0;i<4;i++) ge(`pd${i}`).classList.toggle('on',i<pinBuf.length);
+}
+function checkPin(){
+  if(simpleHash(pinBuf)===simpleHash(S.pin)){
+    hide('modal-pin'); pinBuf='';
+    S.chatUnlocked=true;
+    openChat();
+  } else {
+    pinBuf=''; updateDots();
+    ge('pin-err').classList.add('show');
+    ge('.pin-card')||document.querySelector('.pin-card').classList.add('shake');
+    setTimeout(()=>{
+      ge('pin-err').classList.remove('show');
+      document.querySelector('.pin-card').classList.remove('shake');
+    },500);
+  }
+}
+
+// ══════════════════════════════════════
+//  WEBSOCKET
+// ══════════════════════════════════════
+function connectWS(){
+  if(S.ws){ try{S.ws.close();}catch{} }
+  try{ S.ws=new WebSocket(WS_URL); }
+  catch{ ge('online-txt').textContent='offline mode'; return; }
+
+  S.ws.onopen=()=>{
+    S.wsOk=true;
+    S.ws.send(JSON.stringify({type:'join',room:'f_'+S.room,username:S.name}));
+  };
+  S.ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
+    if(m.type==='message'||m.type==='history') renderMsg(m,m.type==='history');
+    if(m.type==='system') renderSysMsg(m.text);
+    if(m.type==='online')
+      ge('online-txt').textContent=`${m.count} reader${m.count!==1?'s':''} · ${S.room}`;
+  };
+  S.ws.onclose=()=>{ S.wsOk=false; setTimeout(connectWS,3000); };
+  S.ws.onerror=()=>{ ge('online-txt').textContent='connection error'; };
+}
+
+// ══════════════════════════════════════
+//  CHAT
+// ══════════════════════════════════════
+function openChat(){
+  ge('chat-title').textContent=
+    S.currentBook ? S.currentBook.name.replace('.pdf','') : 'Annotations';
+  ge('chat-sub').textContent=`marginal notes · ${S.room}`;
+  show('screen-chat');
+  ge('chat-in').focus();
+}
+function closeChat(){ lockChat(); }
+function lockChat(){
+  S.chatUnlocked=false;
+  hide('screen-chat');
+  hide('modal-pin');
+  pinBuf='';
+}
+
+function sendText(){
+  const txt=ge('chat-in').value.trim();
+  if(!txt) return;
+  if(!S.wsOk){ toast('Not connected'); return; }
+  S.ws.send(JSON.stringify({
+    type:'message',room:'f_'+S.room,
+    username:S.name,msgType:'text',text:txt,page:S.currentPage
+  }));
+  ge('chat-in').value='';
+}
+
+// ── Render message ──────────────────
+function renderMsg(m, isHistory=false){
+  const box=ge('chat-messages');
+  const mine=m.username===S.name;
+  const div=document.createElement('div');
+  div.className=`msg${mine?' mine':''}`;
+
+  let content='';
+
+  if(m.msgType==='text'||!m.msgType){
+    content=`<span class="msg-text">${esc(m.text||'')}</span>`;
+  }
+  else if(m.msgType==='image'||m.msgType==='video'){
+    S.figCount++;
+    const n=S.figCount;
+    const label=m.msgType==='image'?`Fig. ${Math.floor(n/10+1)}.${n%10||n}`:`Pl. ${n}`;
+    content=`<span class="msg-text">
+      <span class="msg-fig" onclick="openLB('${m.url}','${m.msgType}','${label}')">
+        <span class="fig-label">[${label}]</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${m.msgType==='image'
+            ?'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'
+            :'<polygon points="5 3 19 12 5 21 5 3"/>'}
+        </svg>
+      </span>
+    </span>`;
+  }
+  else if(m.msgType==='audio'){
+    S.fnCount++;
+    const fn=S.fnCount;
+    S.fnMap[fn]=m.url;
+    content=`<span class="msg-text">
+      ${esc(m.text||'Voice note')}
+      <span class="msg-fn" onclick="toggleAudio(${fn})">[${fn}]</span>
+    </span>`;
+    updateFnLegend();
+  }
+  else if(m.msgType==='document'){
+    S.appCount++;
+    const alpha='ABCDEFGHIJKLMNOP';
+    const lbl=`Appendix ${alpha[(S.appCount-1)%16]}${S.appCount>16?S.appCount:''}`;
+    content=`<span class="msg-text">
+      <span class="msg-app" onclick="window.open('${m.url}','_blank')">
+        [${lbl}] ${esc(m.filename||'Document')}
+      </span>
+    </span>`;
+  }
+
+  div.innerHTML=`<span class="msg-who">${esc(m.username||'').substring(0,6)}</span>${content}`;
+
+  // audio player row (hidden until clicked)
+  if(m.msgType==='audio'){
+    const fn=S.fnCount;
+    const playerDiv=document.createElement('div');
+    playerDiv.className='audio-player';
+    playerDiv.id=`ap-${fn}`;
+    playerDiv.innerHTML=`
+      <button class="audio-play-btn" onclick="playAudio(${fn})">▶</button>
+      <audio id="aud-${fn}" src="${m.url}"></audio>
+      <span>footnote [${fn}]</span>
+    `;
+    box.appendChild(div);
+    box.appendChild(playerDiv);
+  } else {
+    box.appendChild(div);
+  }
+
+  if(!isHistory) box.scrollTop=box.scrollHeight;
+}
+
+function renderSysMsg(text){
+  const box=ge('chat-messages');
+  const div=document.createElement('div');
+  div.className='msg sys';
+  div.innerHTML=`<span class="msg-text">— ${esc(text)} —</span>`;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+function toggleAudio(fn){
+  const ap=ge(`ap-${fn}`);
+  if(!ap) return;
+  ap.classList.toggle('show');
+}
+function playAudio(fn){
+  const a=ge(`aud-${fn}`);
+  if(!a) return;
+  if(a.paused) a.play(); else a.pause();
+}
+
+function updateFnLegend(){
+  const leg=ge('fn-legend');
+  if(!Object.keys(S.fnMap).length){ leg.style.display='none'; return; }
+  leg.style.display='block';
+  leg.innerHTML=Object.entries(S.fnMap).map(([k])=>
+    `<div class="fn-entry">[${k}] Voice annotation — tap to expand</div>`
+  ).join('');
+}
+
+// ── Lightbox ────────────────────────
+function openLB(url,type,cap){
+  const lb=ge('media-lb');
+  const content=ge('lb-content');
+  lb.classList.remove('hidden');
+  if(type==='image') content.innerHTML=`<img src="${url}" alt="${cap}"/>`;
+  else content.innerHTML=`<video src="${url}" controls autoplay style="max-width:95vw;max-height:80vh;border-radius:4px"></video>`;
+  ge('lb-cap').textContent=cap;
+}
+function closeLB(){
+  ge('media-lb').classList.add('hidden');
+  ge('lb-content').innerHTML='';
+}
+ge('media-lb').addEventListener('click',e=>{ if(e.target===ge('media-lb')) closeLB(); });
+
+// ══════════════════════════════════════
+//  MEDIA UPLOAD
+// ══════════════════════════════════════
+function triggerMedia(accept){
+  ge('media-input').accept=accept;
+  ge('media-input').click();
+}
+function openCamera(){ ge('cam-input').click(); }
+
+async function handleMedia(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  e.target.value='';
+
+  if(!S.cloudName||!S.uploadPreset){
+    toast('Set Cloudinary details in setup');
+    return;
+  }
+
+  toast('Uploading…');
+  try{
+    const url=await uploadCloudinary(file);
+    const type=getMediaType(file.type);
+    S.ws.send(JSON.stringify({
+      type:'message',room:'f_'+S.room,
+      username:S.name,msgType:type,
+      url,filename:file.name,
+      text: type==='audio' ? 'Voice annotation' : '',
+      page:S.currentPage
+    }));
+  }catch(err){
+    toast('Upload failed — check Cloudinary config');
+    console.error(err);
+  }
+}
+
+async function uploadCloudinary(file){
+  const fd=new FormData();
+  fd.append('file',file);
+  fd.append('upload_preset',S.uploadPreset);
+  const r=await fetch(
+    `https://api.cloudinary.com/v1_1/${S.cloudName}/auto/upload`,
+    {method:'POST',body:fd}
+  );
+  const d=await r.json();
+  if(!d.secure_url) throw new Error(d.error?.message||'Upload error');
+  return d.secure_url;
+}
+
+function getMediaType(mimeType){
+  if(mimeType.startsWith('image/')) return 'image';
+  if(mimeType.startsWith('video/')) return 'video';
+  if(mimeType.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
+// ── Audio Recording ─────────────────
+async function toggleAudioRec(){
+  const btn=ge('audio-rec-btn');
+  if(S.mediaRec&&S.mediaRec.state==='recording'){
+    S.mediaRec.stop();
+    btn.classList.remove('rec-active','ring');
+    btn.textContent='🎙';
+    return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    S.mediaChunks=[];
+    S.mediaRec=new MediaRecorder(stream);
+    S.mediaRec.ondataavailable=e=>S.mediaChunks.push(e.data);
+    S.mediaRec.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(S.mediaChunks,{type:'audio/webm'});
+      const file=new File([blob],'voice-note.webm',{type:'audio/webm'});
+      if(!S.cloudName){ toast('Set Cloudinary details'); return; }
+      toast('Uploading voice note…');
+      try{
+        const url=await uploadCloudinary(file);
+        S.ws.send(JSON.stringify({
+          type:'message',room:'f_'+S.room,
+          username:S.name,msgType:'audio',
+          url,text:'Voice annotation',page:S.currentPage
+        }));
+      }catch{ toast('Audio upload failed'); }
+    };
+    S.mediaRec.start();
+    btn.classList.add('rec-active','ring');
+    btn.textContent='⏹';
+    toast('Recording… tap ⏹ to stop');
+  }catch{
+    toast('Microphone access denied');
+  }
+}
+
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+function ge(id){ return document.getElementById(id); }
+function v(id){ return ge(id)?.value||''; }
+function show(id){
+  const el=ge(id);
+  if(el) el.classList.remove('hidden');
+}
+function hide(id){
+  const el=ge(id);
+  if(el) el.classList.add('hidden');
+}
+function esc(s){
+  const d=document.createElement('div');
+  d.textContent=s; return d.innerHTML;
+}
+function simpleHash(s){
+  let h=0;
+  for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; }
+  return h.toString(36);
+}
+let toastTimer;
+function toast(msg,ms=2600){
+  const t=ge('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),ms);
+}
+</script>
+</body>
+</html>
