@@ -1042,7 +1042,7 @@ async function openDefaultBook(i){
   const b=DEFAULT_BOOKS[i];
   toast('Loading…');
   try{
-    const resp=await fetch(b.url);
+    const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(b.url));
     const buf=await resp.arrayBuffer();
     await startReader({name:b.title,data:buf,progress:0,isDefault:true});
   }catch{
